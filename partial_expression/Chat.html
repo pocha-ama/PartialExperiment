@@ -47,7 +47,7 @@
         background-color: #eee;
         padding: 0 10px;
         margin: 8px 10px 0 10px;
-        font-size: 16;
+        font-size: 16px;
     }
 
     .otree-chat__input:focus {
@@ -109,6 +109,52 @@
     .btn-footnote {
         float: none !important;
     }
+
+    .matrix-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        background-color: white;
+        table-layout: fixed;
+    }
+
+    .matrix-table th, .matrix-table td {
+        border: 1px solid #dee2e6;
+        padding: 12px;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .matrix-table thread th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+
+    .matrix-table tbody th {
+        background-color: #FFF3CD;
+        font-weight: normal;
+    }
+
+    .icon-person {
+        width: 64px;
+        height: 64px;
+        margin: 0 4px;
+    }
+
+    .opt1-color { color: #ffa500; fill: #ffa500; stroke: #ffa500; }
+    .opt2-color { color: #4169e1; fill: #4169e1; stroke: #4169e1; }
+
+    .my-icon-disclosed {
+        stroke-width: 0.5;
+        opacity: 1.0;
+    }
+
+    .my-icon-undisclosed {
+        fill-opacity: 0.3;
+        stroke-opacity: 1.0;
+        stroke-width: 0.5;
+        stroke-dasharray: 0.5, 0.5;
+    }
 </style>
 
 <link rel="stylesheet" href="{% static 'global/main.css' %}" />
@@ -140,13 +186,54 @@
     </div>
     <div style="border: 1px solid #34b0e47d; font-size: 100%; padding: 20px;">
         <p>あなたは <b>{{ decision }}</b> を選択しました。</p>
-        <p>あなたを含めた5人の意見は以下のとおりです。</p>
-        <div style="background:#FFF3CD; border: 1px solid 	#FFF3CD; padding-left: 10px;">
-            <b>{{ option1 }}</b>を選択した人：{{ count_option1 }}人
-        </div>
-        <div style="background: #FFF3CD; border: 1px solid #FFF3CD; padding-left: 10px;">
-            <b>{{ option2 }}</b>を選択した人：{{ count_option2 }}人
-        </div>
+        <p>{{ disclosure_msg|safe }}</p>
+
+        <table class="matrix-table">
+            <thead>
+                <tr>
+                    <th style="width: 30%;"></th>
+                    <th style="width: 35%;">他のメンバー</th>
+                    <th style="width: 35%;">あなた</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th><b class="opt1-color">{{ option1 }}</b><br>を選択した人</th>
+                    <td>
+                        {% for _ in others_opt1_list %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="bi bi-person-fill icon-person opt1-color my-icon-disclosed" viewBox="0 0 16 16">
+                            <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3Zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+                        </svg>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% if decision == option1 %}
+                            <svg xmlns="http://www.w3.org/2000/svg" class="bi bi-person-fill icon-person opt1-color {% if my_disclosure %}my-icon-disclosed{% else %}my-icon-undisclosed{% endif %}" viewBox="0 0 16 16">
+                                <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3Zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+                            </svg>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th><b class="opt2-color">{{ option2 }}</b><br>を選択した人</th>
+                    <td>
+                        {% for _ in others_opt2_list %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="bi bi-person-fill icon-person opt2-color my-icon-disclosed" viewBox="0 0 16 16">
+                            <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3Zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+                        </svg>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% if decision == option2 %}
+                            <svg xmlns="http://www.w3.org/2000/svg" class="bi bi-person-fill icon-person opt2-color {% if my_disclosure %}my-icon-disclosed{% else %}my-icon-undisclosed{% endif %}" viewBox="0 0 16 16">
+                                <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3Zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+                            </svg>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
     <br>

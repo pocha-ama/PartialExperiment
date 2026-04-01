@@ -2,16 +2,16 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
-        name = 'conformity_low_condition',
+        name = 'completed_expression',
         app_sequence = [
-            'conformity_low_condition'
+            'completed_expression'
         ],
         num_demo_participants = 5,
     ),
     dict(
-        name = 'conformity_high_condition',
+        name = 'partial_expression',
         app_sequence = [
-            'conformity_high_condition'
+            'partial_expression'
         ],
         num_demo_participants = 5,
     ),

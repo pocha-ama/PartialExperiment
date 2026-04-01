@@ -5,7 +5,7 @@
     <p>この実験では、<b>あなたを含めた参加者5人</b>で、次のような問題について、全員の意見が一致するまで話し合いをしてもらいます。</p>
         <div style="background-color: #e6e6e6;">
             <p><b>人口が多い都市</b>はどちらですか？</p>
-            <ul ul  style="list-style-type:circle;">
+            <ul  style="list-style-type:circle;">
                 <li>ベルリン</li>
                 <li>ミュンヘン</li>
             </ul>
@@ -28,7 +28,7 @@
         <img src="{{ static 'images/task.png' }}" width="100%"/>
     </div>
     <br>
-    <p>その後、5人の参加者の解答を見ながら、話し合いを開始します。</p>
+    <p>その後、5人で話し合いを開始します。</p>
     <p>読み終わったら「次へ」のボタンを押してください。説明が続きます。</p>
     <br>
     <div class="button-container">
@@ -43,7 +43,7 @@
     <p>これはチャットのサンプル画面です。</p>
     <br>
     <div style="border: 1px solid #34b0e47d; font-size: 100%; padding: 20px;">
-        <img src="{{ static 'images/chat.png' }}" width="100%"/>
+        <img src="{{ static 'images/instruction1.png' }}" width="100%"/>
     </div>
     <br>
     <p>読み終わったら「次へ」のボタンを押してください。説明が続きます。</p>
@@ -64,7 +64,7 @@
     <br>
     <p>※ただし、初回の解答で全員一致しても、1度は話し合ってもらいます。</p>
     <br>
-    <p>以上が実験の概要です。次に、実験の流れについてお伝えします。</p>
+    <p>読み終わったら「次へ」のボタンを押してください。説明が続きます。</p>
     <br>
     <div class="button-container">
         <button type="button" class="btn-tab" data-offset="-1">戻る</button>
@@ -79,12 +79,79 @@
     <p>問題ごとに、参加者の番号（1〜5）が割り当てられます。したがって、前の問題で誰が何を発言したのかは、わからないようになっています。</p>
     <p>これを複数の問題について、繰り返していただきます。</p>
     <br>
-    <p>以上が実験の流れです。次に、チャット画面における名前についてお伝えします。</p>
+    <p>以上が実験の流れです。次に、チャット画面ついて説明します。</p>
     <br>
     <div class="button-container">
         <button type="button" class="btn-tab" data-offset="-1">戻る</button>
         <button type="button" class="btn-tab" data-offset="1">次へ</button>
     </div>
+</div>
+
+<div class="tab">
+    <h3>チャット画面で表示される情報について（1）</h3>
+        <p>チャットでは他のメンバーが何を選択したのかを見ることができます。ただし、全員の選択は表示されません。</p>
+        <p>あなたを含めた各メンバーの選択について、コンピュータがそれぞれ25%の確率で表示するかを決定します。そして、コンピュータによって選ばれた選択についてのみ見ることができます。</p>
+        <p>そのため、メンバー全員の選択が公開されることもあれば、誰の選択も公開されていないこともあります。</p>
+        <br>
+        <p>読み終わったら「次へ」のボタンを押してください。</p>
+        <br>
+        <div class="button-container">
+            <button type="button" class="btn-tab" data-offset="-1">戻る</button>
+            <button type="button" class="btn-tab" data-offset="1">次へ</button>
+        </div>
+</div>
+
+<div class="tab">
+    <h3>チャット画面で表示される情報について（2）</h3>
+        <p>以下にその一例をお見せします。この例では、<b>あなた以外の2人のメンバーの選択</b>が公開されています。</p>
+        <p>2人はベルリンを選んだのでオレンジ色のアイコンで表示されています。</p>
+        <p>一方、あなたはミュンヘンを選びましたが、あなたの選択は公開されなかったため、薄い青色のアイコンで表示されています。</p>
+        <br>
+        <div style="border: 1px solid #34b0e47d; font-size: 100%; padding: 20px;">
+            <img src="{{ static 'images/instruction2.png' }}" width="100%"/>
+        </div>
+        <br>
+        <p>読み終わったら「次へ」のボタンを押してください。説明が続きます。</p>
+        <br>
+        <div class="button-container">
+            <button type="button" class="btn-tab" data-offset="-1">戻る</button>
+            <button type="button" class="btn-tab" data-offset="1">次へ</button>
+        </div>
+</div>
+
+<div class="tab">
+    <h3>チャット画面で表示される情報について（3）</h3>
+        <p>次に、<b>あなたの選択が公開されている</b>例をお見せします。</p>
+        <p>この例ではあなたの選択が公開されており、濃い青色のアイコンで表示されています。</p>
+        <br>
+        <div style="border: 1px solid #34b0e47d; font-size: 100%; padding: 20px;">
+            <img src="{{ static 'images/instruction3.png' }}" width="100%"/>
+        </div>
+        <br>
+        <p>読み終わったら「次へ」のボタンを押してください。説明が続きます。</p>
+        <br>
+        <div class="button-container">
+            <button type="button" class="btn-tab" data-offset="-1">戻る</button>
+            <button type="button" class="btn-tab" data-offset="1">次へ</button>
+        </div>
+</div>
+
+<div class="tab">
+    <h3>チャット画面で表示される情報について（4）</h3>
+        <p>最後に<b>誰の選択も公開されない</b>例をお見せします。</p>
+        <p>この例ではあなたの選択は公開されていないので薄い青色のアイコンで表示されています。</p>
+        <p>また、他のメンバーの選択も公開されていないので、他のメンバーの欄にはアイコンが表示されていません。</p>
+        <br>
+        <div style="border: 1px solid #34b0e47d; font-size: 100%; padding: 20px;">
+            <img src="{{ static 'images/instruction4.png' }}" width="100%"/>
+        </div>
+        <br>
+        <p>以上がチャット画面で表示される情報についての説明です。次に、実験の流れについてお伝えします。</p>
+        <br>
+        <div class="button-container">
+            <button type="button" class="btn-tab" data-offset="-1">戻る</button>
+            <button type="button" class="btn-tab" data-offset="1">次へ</button>
+        </div>
 </div>
 
 <div class="tab">
@@ -110,20 +177,6 @@
         <p>正答1問あたりの報酬は100円です。</p>
         <p>したがって、全12問正解した場合の報酬額は、800円＋12問×100円で2,000円となります。</p>
         <br>
-        <p>次に、話し合いの制限時間について説明します。</p>
-        <br>
-        <div class="button-container">
-            <button type="button" class="btn-tab" data-offset="-1">戻る</button>
-            <button type="button" class="btn-tab" data-offset="1">次へ</button>
-        </div>
-</div>
-
-<div class="tab">
-    <h3>話し合いの制限時間について</h3>
-        <p>既に説明した通り、2分経過すると話し合いは中断して、個人の意見を尋ねる画面が表示されます。</p>
-        <p>一定の時間内に意見が一致しなかったら、話し合いは強制的に終了します。その場合、<b>その問題の報酬額は0円となります</b></b>。
-        <p>ただし、いつ話し合いが強制終了となるかは、コンピュータがランダムに決定します。また12問の問題ごとに、異なるタイミングで強制終了されます。</p>
-        <br>
         <p>次に、話し合いの注意点について説明します。</p>
         <br>
         <div class="button-container">
@@ -134,10 +187,11 @@
 
 <div class="tab">
     <h3>話し合いで注意して欲しいこと</h3>
-        <p>話し合いでは、できるだけ早く意見が一致するようにしてください。</p>
-        <p><b>話し合いが長引くと、強制終了されて、報酬がもらえません</b>。</p>
-        <p>報酬を得るためには、全員の意見が一致していることが必要となります。</p>
-        <p>したがって、意見が割れたら、時間をかけずにできるだけ早く意見を一致させるよう心がけてください。</p>
+        <p>話し合いでは、決して急いで結論を出さずに、他者の意見を聞きながらも、自分が正しいと思う答えを探すようにしてください。</p>
+        <p><b>話し合いが早く終わったからといって報酬額は増えません</b>。</p>
+        <p>また、短時間で意見が一致しても、答えが間違っていたら報酬は得られません。</p>
+        <p>したがって、意見が割れても、すぐに結論を出す必要はありません。</p>
+        <p>話し合いでは、あなたが正しいと思う意見を主張し、時間をかけて納得するまで話し合いを続けてください。</p>
         <br>
         <p>最後に、解答する上での注意点についてお伝えします。</p>
         <br>

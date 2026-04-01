@@ -1,5 +1,11 @@
 {{ block title }}
-現在のあなたの意見を教えてください。
+
+{% if round == 1 %}
+    練習問題
+{% else %}
+    {{ idx }} 問目（全{{ sum_questions }}問）
+{% endif %}
+
 {{ endblock }}
 
 {{ block content }}
@@ -11,16 +17,15 @@
         <form method="post">
             <p>
                 <label>
-                    <input type="radio" name="nth_decision_making" value="{{ option1 }}" required> {{ option1 }}
+                    <input type="radio" name="first_decision_making" value="{{ option1 }}" required> {{ option1 }}
                 </label>
             </p>
             <p>
                 <label>
-                    <input type="radio" name="nth_decision_making" value="{{ option2 }}" required> {{ option2 }}
+                    <input type="radio" name="first_decision_making" value="{{ option2 }}" required> {{ option2 }}
                 </label>
             </p>
 
-            {% if annotations %}
             <button type="button" class="btn-footnote" data-toggle="modal" data-target="#exampleModal">
                 脚注を参照
             </button>
@@ -47,30 +52,28 @@
             </div>
 
             <br>
-            {% endif %}
-
             <br>
 
             <p><b>{{ confidence_question }}</b></p>
             <p class="small-font">まったく自信がない ---------------------------------------------- とても自信がある</p>
-            <div class="confidence-container">
+                <div class="confidence-container">
                 {% for choice in confidence_choices %}
                     <label class="confidence-option">
-                        <input type="radio" name="nth_confidence" value="{{ choice }}" required> {{ choice }}
+                        <input type="radio" name="first_confidence" value="{{ choice }}" required> {{ choice }}
                     </label>
                 {% endfor %}
             </div>
 
             <br>
             <br>
-            <br>
-            <br>
+
 
             <button type="submit">次へ</button>
         </form>
 
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
 
         <style>
             .confidence-container {

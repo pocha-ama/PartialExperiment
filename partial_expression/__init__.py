@@ -6,7 +6,7 @@ import numpy as np
 from otree.api import *
 
 import json
-with open('./conformity_low_condition/tasks_info.json') as f:
+with open('./partial_expression/tasks_info.json') as f:
     tasks_info = json.load(f)
 
 doc = """
@@ -15,12 +15,13 @@ Ranking Task Experiment
 rng = np.random.default_rng()
 
 class C(BaseConstants):
-    NAME_IN_URL = 'conformity_low_condition'
+    NAME_IN_URL = 'partial_expression'
     PLAYERS_PER_GROUP = None
     TASKS_INFO = tasks_info
     NUM_PAIRS = 2
     NUM_ROUNDS = 1000
     NUM_TASKS = len(TASKS_INFO)
+    GAMMA = 0.25 # the probability of expression
 
 class Subsession(BaseSubsession):
     pass
@@ -67,6 +68,12 @@ class Player(BasePlayer):
         verbose_name = 'その判断にどのくらい自信がありますか？',
         widget = widgets.RadioSelect()
     )
+    # first_disclosure = models.CharField(
+    #     initial = None,
+    #     choices=['はい', 'いいえ'],
+    #     verbose_name='メンバーに自分の意見を公開しますか？',
+    #     widget=widgets.RadioSelect()
+    # )
     nth_decision_making = models.LongStringField()
     nth_confidence = models.CharField(
         initial = None,
@@ -74,6 +81,12 @@ class Player(BasePlayer):
         verbose_name = 'その判断にどのくらい自信がありますか？',
         widget = widgets.RadioSelect()
     )
+    # nth_disclosure = models.CharField(
+    #     initial = None,
+    #     choices=['はい', 'いいえ'],
+    #     verbose_name='メンバーに自分の意見を公開しますか？',
+    #     widget=widgets.RadioSelect()
+    # )
     chat_fields = models.LongStringField()
 
 # FUNCTION
@@ -201,7 +214,10 @@ class Question(Page):
 
 class First_Make_Decision(Page):
     form_model = 'player'
-    form_fields = ['first_decision_making', 'first_confidence']
+    form_fields = ['first_decision_making', \
+                    'first_confidence'
+                    # 'first_disclosure' \
+                    ]
 
     @staticmethod
     def is_displayed(player):
@@ -226,6 +242,8 @@ class First_Make_Decision(Page):
             'option2': current_question['option2'],
             'confidence_question': 'その判断にどのくらい自信がありますか？',
             'confidence_choices': ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+            # 'disclosure_question': 'メンバーに自分の意見を公開しますか？',
+            # 'disclosure_choices': ['はい', 'いいえ'],
             'annotations': current_task_info['annotation'],
         }
 
@@ -251,8 +269,10 @@ class First_Make_Decision(Page):
             'choice': choice,
             'true_false': true_false,
             'confidence': confidence,
-            'time_spent': elapsed_time
+            'time_spent': elapsed_time,
+            'is_disclosed': None
         })
+        # player.participant.vars[f'disclosure_round_{player.round_number}'] = player.first_disclosure
 
 
 class Wait_Chat(WaitPage):
@@ -262,10 +282,19 @@ class Wait_Chat(WaitPage):
         idx = player.participant.vars['current_task_index']
         return player.round_number == 1 or (player.participant.vars.get(f'is_finished_round_{prev}') is True and idx < len(player.participant.vars['all_tasks']))
 
+    @staticmethod
+    def after_all_players_arrive(group):
+        players = group.get_players()
+        idx = players[0].participant.vars['current_task_index']
+        round_number = group.round_number
+        disclosures = [float(rng.random()) < C.GAMMA for _ in players]
+        for i, p in enumerate(players):
+            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if disclosures[i] else 'いいえ'
+            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = 1 if disclosures[i] else 0
 
 class Chat(Page):
     form_model = 'player'
-    timeout_seconds = 120
+    # timeout_seconds = 120
 
     @staticmethod
     def is_displayed(player):
@@ -278,65 +307,59 @@ class Chat(Page):
         else:
             return False
 
-    # 以下はチャット履歴を復元するためのコード（今回は実装していないが、今後のために記録）
-    # @staticmethod
-    # def live_method(player, data):
-    #     if "nickname" in data.keys():
-    #         # liveSendの処理
-    #         idx = player.participant.vars['current_task_index']
-    #         nickname = player.participant.vars['nickname_map'][idx]
-    #         message = data['message']
-    #         timestamped_message = {
-    #             'nickname': nickname,
-    #             'id_in_group': player.id_in_group,
-    #             'message': message
-    #         }
-    #         for p in player.group.get_players():
-    #             if f'chat_history_{idx}' not in p.participant.vars:
-    #                 p.participant.vars[f'chat_history_{idx}'] = []
-    #             p.participant.vars[f'chat_history_{idx}'].append(timestamped_message)
-    #     else:
-    #         # liveRecvの処理
-    #         if player.round_number == 1:
-    #             chat_history = None
-    #         else:
-    #             idx = player.participant.vars['current_task_index']
-    #             prev_players = player.in_previous_rounds()
-    #             prev_player = prev_players[0]
-    #             chat_history = prev_player.participant.vars.get(f'chat_history_{idx}')
-    #         idx = player.participant.vars['current_task_index']
-    #         nickname = player.participant.vars['nickname_map'][idx]
-    #         print(f'チャット履歴：\n{nickname}\n{chat_history}')
-    #         return {0: chat_history}
-
     @staticmethod
     def vars_for_template(player):
         prev_round = player.round_number if player.round_number == 1 or player.round_number == 2 else player.round_number - 1
         decision = player.participant.vars.get(f'decision_making_round_{prev_round}')
+        my_disclosure = player.participant.vars.get(f'disclosure_round_{prev_round}') == 'はい'
         idx = player.participant.vars['current_task_index']
         current_question = player.participant.vars['all_tasks'][idx]
         nickname = player.participant.vars['nickname_map'][idx]
-        decisions = [p.participant.vars.get(f'decision_making_round_{prev_round}') for p in player.group.get_players()]
-        count_option1 = sum(1 for d in decisions if d == current_question['option1'])
-        count_option2 = sum(1 for d in decisions if d == current_question['option2'])
+        option1 = current_question['option1']
+        option2 = current_question['option2']
+        all_players = player.group.get_players()
+        others_op1_count = 0
+        others_op2_count = 0
+        for p in all_players:
+            if p != player:
+                if p.participant.vars.get(f'disclosure_round_{prev_round}') == 'はい':
+                    p_decision = p.participant.vars.get(f'decision_making_round_{prev_round}')
+                    if p_decision == option1:
+                        others_op1_count += 1
+                    elif p_decision == option2:
+                        others_op2_count += 1
+        num_others_disclosed = others_op1_count + others_op2_count
+        if my_disclosure and num_others_disclosed > 0:
+            disclosure_msg = f"<b>あなた</b> と <b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
+        elif my_disclosure and num_others_disclosed == 0:
+            disclosure_msg = f"<b>あなた</b> の選択のみ公開されています。"
+        elif not my_disclosure and num_others_disclosed > 0:
+            disclosure_msg = f"<b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
+        else:
+            disclosure_msg = f"今回は <b>誰の意見も公開されていません</b>。"
         current_task = player.participant.vars['all_tasks'][idx]['kind']
         current_task_info = next(task for task in C.TASKS_INFO if task['kind'] == current_task)
         return {
             'nickname': nickname,
             'decision': decision,
-            'decisions': decisions,
+            'my_disclosure': my_disclosure,
             'question': current_question['question'],
-            'option1': current_question['option1'],
-            'option2': current_question['option2'],
-            'count_option1': count_option1,
-            'count_option2': count_option2,
+            'option1': option1,
+            'option2': option2,
+            'others_opt1_list': range(others_op1_count),
+            'others_opt2_list': range(others_op2_count),
+            'num_others_disclosed': num_others_disclosed,
+            'disclosure_msg': disclosure_msg,
             'annotations': current_task_info['annotation'],
         }
 
 
 class Nth_Make_Decision(Page):
     form_model = 'player'
-    form_fields = ['nth_decision_making', 'nth_confidence']
+    form_fields = ['nth_decision_making', \
+                    'nth_confidence' \
+                    # 'nth_disclosure'
+                    ]
 
     @staticmethod
     def is_displayed(player):
@@ -394,8 +417,10 @@ class Nth_Make_Decision(Page):
             'choice': choice,
             'true_false': true_false,
             'confidence': confidence,
-            'time_spent': elapsed_time
+            'time_spent': elapsed_time,
+            'is_disclosed': None
         })
+        # player.participant.vars[f'disclosure_round_{player.round_number}'] = player.nth_disclosure
 
 
 class Wait_Decision(WaitPage):
@@ -414,6 +439,14 @@ class Wait_Decision(WaitPage):
 
     @staticmethod
     def after_all_players_arrive(group):
+        players = group.get_players()
+        idx = players[0].participant.vars['current_task_index']
+        round_number = group.round_number
+        disclosures = [float(rng.random()) < C.GAMMA for _ in players]
+        for i, p in enumerate(players):
+            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if disclosures[i] else 'いいえ'
+            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = 1 if disclosures[i] else 0
+
         idx = group.get_players()[0].participant.vars['current_task_index']
         decisions = [p.participant.vars.get(f'decision_making_round_{p.round_number}') for p in group.get_players()]
         if all(d == decisions[0] for d in decisions):
@@ -521,7 +554,7 @@ def custom_export(players):
         'participant_code', 'session_code', 'time_started_utc',
         'condition','groupID', 'individualID', 'gender', 'age',
         'order_id','questionID', 'task_id', 'kind', 'subquestionID', 'option1', 'option2', 'rank1', 'rank2',
-        'time_step', 'choice', 'true_false', 'confidence', 'time_spent'
+        'time_step', 'choice', 'true_false', 'confidence', 'time_spent', 'is_disclosed'
     ]
     for p in players:
         if p.round_number == C.NUM_ROUNDS:
@@ -532,7 +565,7 @@ def custom_export(players):
                         p.participant.code,
                         p.session.code,
                         p.participant.time_started_utc,
-                        0,
+                        1,
                         p.participant.vars.get('group_id_number'),
                         p.participant.vars.get('individual_id_number'),
                         p.participant.vars.get('gender'),
@@ -550,5 +583,6 @@ def custom_export(players):
                         choice_data.get('choice'),
                         choice_data.get('true_false'),
                         choice_data.get('confidence'),
-                        choice_data.get('time_spent')
+                        choice_data.get('time_spent'),
+                        choice_data.get('is_disclosed')
                     ]
