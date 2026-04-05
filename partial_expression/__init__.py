@@ -287,14 +287,21 @@ class Wait_Chat(WaitPage):
         players = group.get_players()
         idx = players[0].participant.vars['current_task_index']
         round_number = group.round_number
-        disclosures = [float(rng.random()) < C.GAMMA for _ in players]
+        current_task = players[0].participant.vars['all_tasks'][idx]['task_id']
+        if current_task == 'practice':
+            disclosures = [True for _ in players]
+        else:
+            while True:
+                disclosures = [float(rng.random()) < C.GAMMA for _ in players]
+                if any(disclosures):
+                    break
         for i, p in enumerate(players):
             p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if disclosures[i] else 'いいえ'
-            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = 1 if disclosures[i] else 0
+            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = bool(disclosures[i])
 
 class Chat(Page):
     form_model = 'player'
-    # timeout_seconds = 120
+    timeout_seconds = 120
 
     @staticmethod
     def is_displayed(player):
@@ -331,10 +338,13 @@ class Chat(Page):
         num_others_disclosed = others_op1_count + others_op2_count
         if my_disclosure and num_others_disclosed > 0:
             disclosure_msg = f"<b>あなた</b> と <b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
+            chat_msg = f"他のメンバーとチャットで話し合ってください。"
         elif my_disclosure and num_others_disclosed == 0:
             disclosure_msg = f"<b>あなた</b> の選択のみ公開されています。"
+            chat_msg = f"他のメンバーに向けて、あなたがその選択肢を選んだ理由や根拠をチャットで説明してください。"
         elif not my_disclosure and num_others_disclosed > 0:
             disclosure_msg = f"<b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
+            chat_msg = f"他のメンバーのメッセージを読み、自分の解答の参考にしてください。"
         else:
             disclosure_msg = f"今回は <b>誰の意見も公開されていません</b>。"
         current_task = player.participant.vars['all_tasks'][idx]['kind']
@@ -350,6 +360,7 @@ class Chat(Page):
             'others_opt2_list': range(others_op2_count),
             'num_others_disclosed': num_others_disclosed,
             'disclosure_msg': disclosure_msg,
+            'chat_msg': chat_msg,
             'annotations': current_task_info['annotation'],
         }
 
@@ -442,10 +453,17 @@ class Wait_Decision(WaitPage):
         players = group.get_players()
         idx = players[0].participant.vars['current_task_index']
         round_number = group.round_number
-        disclosures = [float(rng.random()) < C.GAMMA for _ in players]
+        current_task = players[0].participant.vars['all_tasks'][idx]['task_id']
+        if current_task == 'practice':
+            disclosures = [True for _ in players]
+        else:
+            while True:
+                disclosures = [float(rng.random()) < C.GAMMA for _ in players]
+                if any(disclosures):
+                    break
         for i, p in enumerate(players):
             p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if disclosures[i] else 'いいえ'
-            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = 1 if disclosures[i] else 0
+            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = bool(disclosures[i])
 
         idx = group.get_players()[0].participant.vars['current_task_index']
         decisions = [p.participant.vars.get(f'decision_making_round_{p.round_number}') for p in group.get_players()]
