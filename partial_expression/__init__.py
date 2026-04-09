@@ -21,7 +21,7 @@ class C(BaseConstants):
     NUM_PAIRS = 2
     NUM_ROUNDS = 1000
     NUM_TASKS = len(TASKS_INFO)
-    GAMMA = 0.25 # the probability of expression
+    GAMMA = 0.35 # the probability of expression
 
 class Subsession(BaseSubsession):
     pass
@@ -291,8 +291,9 @@ class Wait_Chat(WaitPage):
         if current_task == 'practice':
             disclosures = [True for _ in players]
         else:
+            current_gamma = C.GAMMA if idx <= 4 else 0.50
             while True:
-                disclosures = [float(rng.random()) < C.GAMMA for _ in players]
+                disclosures = [float(rng.random()) < current_gamma for _ in players]
                 if any(disclosures):
                     break
         for i, p in enumerate(players):
@@ -338,13 +339,13 @@ class Chat(Page):
         num_others_disclosed = others_op1_count + others_op2_count
         if my_disclosure and num_others_disclosed > 0:
             disclosure_msg = f"<b>あなた</b> と <b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
-            chat_msg = f"他のメンバーとチャットで話し合ってください。"
+            chat_msg = f"他のメンバーと意見を交わし、なぜその選択肢が正しいと思うか議論を深めてください。"
         elif my_disclosure and num_others_disclosed == 0:
             disclosure_msg = f"<b>あなた</b> の選択のみ公開されています。"
-            chat_msg = f"他のメンバーに向けて、あなたがその選択肢を選んだ理由や根拠をチャットで説明してください。"
+            chat_msg = f"現在、発言できるのはあなただけです。他のメンバーの参考になるよう、その選択肢を選んだ理由や考えを共有してください。"
         elif not my_disclosure and num_others_disclosed > 0:
             disclosure_msg = f"<b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
-            chat_msg = f"他のメンバーのメッセージを読み、自分の解答の参考にしてください。"
+            chat_msg = f"あなたは現在チャットを使うことができません。他のメンバーの発言内容を確認し、自分の解答の参考にしましょう。"
         else:
             disclosure_msg = f"今回は <b>誰の意見も公開されていません</b>。"
         current_task = player.participant.vars['all_tasks'][idx]['kind']
@@ -457,8 +458,9 @@ class Wait_Decision(WaitPage):
         if current_task == 'practice':
             disclosures = [True for _ in players]
         else:
+            current_gamma = C.GAMMA if idx <= 4 else 0.50
             while True:
-                disclosures = [float(rng.random()) < C.GAMMA for _ in players]
+                disclosures = [float(rng.random()) < current_gamma for _ in players]
                 if any(disclosures):
                     break
         for i, p in enumerate(players):
