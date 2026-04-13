@@ -1,7 +1,7 @@
 from time import time
 from otree.models_concrete import ChatMessage
 import itertools
-
+import random
 import numpy as np
 from otree.api import *
 
@@ -21,7 +21,6 @@ class C(BaseConstants):
     NUM_PAIRS = 2
     NUM_ROUNDS = 1000
     NUM_TASKS = len(TASKS_INFO)
-    GAMMA = 0.35 # the probability of expression
 
 class Subsession(BaseSubsession):
     pass
@@ -68,12 +67,6 @@ class Player(BasePlayer):
         verbose_name = 'その判断にどのくらい自信がありますか？',
         widget = widgets.RadioSelect()
     )
-    # first_disclosure = models.CharField(
-    #     initial = None,
-    #     choices=['はい', 'いいえ'],
-    #     verbose_name='メンバーに自分の意見を公開しますか？',
-    #     widget=widgets.RadioSelect()
-    # )
     nth_decision_making = models.LongStringField()
     nth_confidence = models.CharField(
         initial = None,
@@ -81,12 +74,6 @@ class Player(BasePlayer):
         verbose_name = 'その判断にどのくらい自信がありますか？',
         widget = widgets.RadioSelect()
     )
-    # nth_disclosure = models.CharField(
-    #     initial = None,
-    #     choices=['はい', 'いいえ'],
-    #     verbose_name='メンバーに自分の意見を公開しますか？',
-    #     widget=widgets.RadioSelect()
-    # )
     chat_fields = models.LongStringField()
 
 # FUNCTION
@@ -148,7 +135,8 @@ def creating_session(subsession: Subsession):
                     if 'nickname_map' not in p.participant.vars:
                         p.participant.vars['nickname_map'] = {}
                     p.participant.vars['nickname_map'][task_index] = f'{i+1}番さん'
-
+        for p in subsession.get_players():
+            p.participant.vars['selection_count'] = 0
 
 def not_finished_all_tasks(player):
     return player.participant.vars['current_task_index'] < len(player.participant.vars['all_tasks'])
@@ -272,8 +260,42 @@ class First_Make_Decision(Page):
             'time_spent': elapsed_time,
             'is_disclosed': None
         })
-        # player.participant.vars[f'disclosure_round_{player.round_number}'] = player.first_disclosure
 
+def set_disclosures_1vs1(group):
+    players = group.get_players()
+    idx = players[0].participant.vars['current_task_index']
+    round_number = group.round_number
+    current_task_info = players[0].participant.vars['all_tasks'][idx]
+    if current_task_info['task_id'] == 'practice':
+        for p in players:
+            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい'
+            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = True
+    else:
+        prev_round = round_number if round_number == 1 or round_number == 2 else round_number - 1
+        opt1 = current_task_info['option1']
+        opt2 = current_task_info['option2']
+        faction_1 = [p for p in players if p.participant.vars.get(f'decision_making_round_{prev_round}') == opt1]
+        faction_2 = [p for p in players if p.participant.vars.get(f'decision_making_round_{prev_round}') == opt2]
+        selected_players = []
+        if faction_1 and faction_2:
+            for faction in [faction_1, faction_2]:
+                min_c = min(p.participant.vars['selection_count'] for p in faction)
+                candidates = [p for p in faction if p.participant.vars['selection_count'] == min_c]
+                selected_players.append(random.choice(candidates))
+        else:
+            candidates = players.copy()
+            for _ in range(2):
+                min_c = min(p.participant.vars['selection_count'] for p in candidates)
+                tied_players = [p for p in candidates if p.participant.vars['selection_count'] == min_c]
+                chosen = random.choice(tied_players)
+                selected_players.append(chosen)
+                candidates.remove(chosen)
+        for p in players:
+            is_selected = p in selected_players
+            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if is_selected else 'いいえ'
+            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = is_selected
+            if is_selected:
+                p.participant.vars['selection_count'] += 1
 
 class Wait_Chat(WaitPage):
     @staticmethod
@@ -284,21 +306,7 @@ class Wait_Chat(WaitPage):
 
     @staticmethod
     def after_all_players_arrive(group):
-        players = group.get_players()
-        idx = players[0].participant.vars['current_task_index']
-        round_number = group.round_number
-        current_task = players[0].participant.vars['all_tasks'][idx]['task_id']
-        if current_task == 'practice':
-            disclosures = [True for _ in players]
-        else:
-            current_gamma = C.GAMMA if idx <= 4 else 0.50
-            while True:
-                disclosures = [float(rng.random()) < current_gamma for _ in players]
-                if any(disclosures):
-                    break
-        for i, p in enumerate(players):
-            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if disclosures[i] else 'いいえ'
-            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = bool(disclosures[i])
+        set_disclosures_1vs1(group)
 
 class Chat(Page):
     form_model = 'player'
@@ -454,36 +462,18 @@ class Wait_Decision(WaitPage):
         players = group.get_players()
         idx = players[0].participant.vars['current_task_index']
         round_number = group.round_number
-        current_task = players[0].participant.vars['all_tasks'][idx]['task_id']
-        if current_task == 'practice':
-            disclosures = [True for _ in players]
-        else:
-            current_gamma = C.GAMMA if idx <= 4 else 0.50
-            while True:
-                disclosures = [float(rng.random()) < current_gamma for _ in players]
-                if any(disclosures):
-                    break
-        for i, p in enumerate(players):
-            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if disclosures[i] else 'いいえ'
-            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = bool(disclosures[i])
-
-        idx = group.get_players()[0].participant.vars['current_task_index']
-        decisions = [p.participant.vars.get(f'decision_making_round_{p.round_number}') for p in group.get_players()]
+        decisions = [p.participant.vars.get(f'decision_making_round_{p.round_number}') for p in players]
         if all(d == decisions[0] for d in decisions):
-            # true_false = group.get_players()[0].participant.vars.get(f'choice_task{idx}')[-1]['true_false']
-            for p in group.get_players():
+            for p in players:
                 p.participant.vars[f'task{idx}_finished'] = p.round_number
-                # p.participant.vars[f'task{idx}_group_choice'] = true_false
-            if idx + 1 < len(group.get_players()[0].participant.vars['all_tasks']):
-                for p in group.get_players():
-                    p.participant.vars[f'is_finished_round_{p.round_number}'] = True
-            if idx + 1 == len(group.get_players()[0].participant.vars['all_tasks']):
-                for p in group.get_players():
-                    p.participant.vars[f'is_finished_round_{p.round_number}'] = True
+                p.participant.vars[f'is_finished_round_{p.round_number}'] = True
+                p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = True
+                p.participant.vars[f'disclosure_round_{round_number}'] = 'はい'
         else:
             group.loop_count += 1
-            for p in group.get_players():
+            for p in players:
                 p.participant.vars[f'is_finished_round_{p.round_number}'] = False
+            set_disclosures_1vs1(group)
 
 
 class Unanimity(Page):
