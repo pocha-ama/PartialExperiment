@@ -135,11 +135,23 @@ def creating_session(subsession: Subsession):
                     if 'nickname_map' not in p.participant.vars:
                         p.participant.vars['nickname_map'] = {}
                     p.participant.vars['nickname_map'][task_index] = f'{i+1}番さん'
-        for p in subsession.get_players():
-            p.participant.vars['selection_count'] = 0
 
 def not_finished_all_tasks(player):
     return player.participant.vars['current_task_index'] < len(player.participant.vars['all_tasks'])
+
+def get_next_pair(group):
+    p1 = group.get_players()[0]
+    if not p1.participant.vars.get('pair_queue'):
+        players = group.get_players()
+        shuffled_ids = [p.id_in_group for p in players]
+        random.shuffle(shuffled_ids)
+        block = []
+        for i in range(5):
+            pair = [shuffled_ids[i], shuffled_ids[(i + 1) % 5]]
+            block.append(pair)
+        random.shuffle(block)
+        p1.participant.vars['pair_queue'] = block
+    return p1.participant.vars['pair_queue'].pop(0)
 
 # PAGES
 class Stand_by(Page):
@@ -204,7 +216,6 @@ class First_Make_Decision(Page):
     form_model = 'player'
     form_fields = ['first_decision_making', \
                     'first_confidence'
-                    # 'first_disclosure' \
                     ]
 
     @staticmethod
@@ -230,8 +241,6 @@ class First_Make_Decision(Page):
             'option2': current_question['option2'],
             'confidence_question': 'その判断にどのくらい自信がありますか？',
             'confidence_choices': ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-            # 'disclosure_question': 'メンバーに自分の意見を公開しますか？',
-            # 'disclosure_choices': ['はい', 'いいえ'],
             'annotations': current_task_info['annotation'],
         }
 
@@ -261,42 +270,6 @@ class First_Make_Decision(Page):
             'is_disclosed': None
         })
 
-def set_disclosures_1vs1(group):
-    players = group.get_players()
-    idx = players[0].participant.vars['current_task_index']
-    round_number = group.round_number
-    current_task_info = players[0].participant.vars['all_tasks'][idx]
-    if current_task_info['task_id'] == 'practice':
-        for p in players:
-            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい'
-            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = True
-    else:
-        prev_round = round_number if round_number == 1 or round_number == 2 else round_number - 1
-        opt1 = current_task_info['option1']
-        opt2 = current_task_info['option2']
-        faction_1 = [p for p in players if p.participant.vars.get(f'decision_making_round_{prev_round}') == opt1]
-        faction_2 = [p for p in players if p.participant.vars.get(f'decision_making_round_{prev_round}') == opt2]
-        selected_players = []
-        if faction_1 and faction_2:
-            for faction in [faction_1, faction_2]:
-                min_c = min(p.participant.vars['selection_count'] for p in faction)
-                candidates = [p for p in faction if p.participant.vars['selection_count'] == min_c]
-                selected_players.append(random.choice(candidates))
-        else:
-            candidates = players.copy()
-            for _ in range(2):
-                min_c = min(p.participant.vars['selection_count'] for p in candidates)
-                tied_players = [p for p in candidates if p.participant.vars['selection_count'] == min_c]
-                chosen = random.choice(tied_players)
-                selected_players.append(chosen)
-                candidates.remove(chosen)
-        for p in players:
-            is_selected = p in selected_players
-            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if is_selected else 'いいえ'
-            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = is_selected
-            if is_selected:
-                p.participant.vars['selection_count'] += 1
-
 class Wait_Chat(WaitPage):
     @staticmethod
     def is_displayed(player):
@@ -306,7 +279,21 @@ class Wait_Chat(WaitPage):
 
     @staticmethod
     def after_all_players_arrive(group):
-        set_disclosures_1vs1(group)
+        players = group.get_players()
+        idx = players[0].participant.vars['current_task_index']
+        round_number = group.round_number
+        current_task = players[0].participant.vars['all_tasks'][idx]['task_id']
+        if current_task == 'practice':
+            for p in players:
+                p.participant.vars[f'disclosure_round_{round_number}'] = 'はい'
+                p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = True
+            return
+        next_pair_ids = get_next_pair(group)
+        for p in players:
+            is_selected = p.id_in_group in next_pair_ids
+            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if is_selected else 'いいえ'
+            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = is_selected
+
 
 class Chat(Page):
     form_model = 'player'
@@ -325,7 +312,8 @@ class Chat(Page):
 
     @staticmethod
     def vars_for_template(player):
-        prev_round = player.round_number if player.round_number == 1 or player.round_number == 2 else player.round_number - 1
+        round_number = player.round_number
+        prev_round = round_number if round_number == 1 or round_number == 2 else round_number - 1
         decision = player.participant.vars.get(f'decision_making_round_{prev_round}')
         my_disclosure = player.participant.vars.get(f'disclosure_round_{prev_round}') == 'はい'
         idx = player.participant.vars['current_task_index']
@@ -344,6 +332,16 @@ class Chat(Page):
                         others_op1_count += 1
                     elif p_decision == option2:
                         others_op2_count += 1
+        # =========================================================
+        # ▼▼▼ スクリーンショット撮影用の強制上書きブロック ▼▼▼
+        # =========================================================
+        # decision = option2          # 自分の選択（option1=ベルリン, option2=ミュンヘン）
+        # my_disclosure = False       # 自分の意見が公開されたか (True か False)
+        # others_op1_count = 1        # 選択肢1(ベルリン)を選んだ他者の公開人数
+        # others_op2_count = 1        # 選択肢2(ミュンヘン)を選んだ他者の公開人数
+        # =========================================================
+        # ▲▲▲ ここまで ▲▲▲
+        # =========================================================
         num_others_disclosed = others_op1_count + others_op2_count
         if my_disclosure and num_others_disclosed > 0:
             disclosure_msg = f"<b>あなた</b> と <b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
@@ -378,7 +376,6 @@ class Nth_Make_Decision(Page):
     form_model = 'player'
     form_fields = ['nth_decision_making', \
                     'nth_confidence' \
-                    # 'nth_disclosure'
                     ]
 
     @staticmethod
@@ -440,7 +437,6 @@ class Nth_Make_Decision(Page):
             'time_spent': elapsed_time,
             'is_disclosed': None
         })
-        # player.participant.vars[f'disclosure_round_{player.round_number}'] = player.nth_disclosure
 
 
 class Wait_Decision(WaitPage):
@@ -473,7 +469,11 @@ class Wait_Decision(WaitPage):
             group.loop_count += 1
             for p in players:
                 p.participant.vars[f'is_finished_round_{p.round_number}'] = False
-            set_disclosures_1vs1(group)
+            next_pair_ids = get_next_pair(group)
+            for p in players:
+                is_selected = p.id_in_group in next_pair_ids
+                p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if is_selected else 'いいえ'
+                p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = is_selected
 
 
 class Unanimity(Page):
