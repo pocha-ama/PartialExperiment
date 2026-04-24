@@ -139,19 +139,30 @@ def creating_session(subsession: Subsession):
 def not_finished_all_tasks(player):
     return player.participant.vars['current_task_index'] < len(player.participant.vars['all_tasks'])
 
-def get_next_pair(group):
-    p1 = group.get_players()[0]
-    if not p1.participant.vars.get('pair_queue'):
-        players = group.get_players()
-        shuffled_ids = [p.id_in_group for p in players]
-        random.shuffle(shuffled_ids)
-        block = []
-        for i in range(5):
-            pair = [shuffled_ids[i], shuffled_ids[(i + 1) % 5]]
-            block.append(pair)
-        random.shuffle(block)
-        p1.participant.vars['pair_queue'] = block
-    return p1.participant.vars['pair_queue'].pop(0)
+def set_disclosures_priority(group):
+    players = group.get_players()
+    round_number = group.round_number
+    idx = players[0].participant.vars['current_task_index']
+    if players[0].participant.vars['all_tasks'][idx]['task_id'] == 'practice':
+        for p in players:
+            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい'
+            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = True
+        return
+    player_stats = []
+    for p in players:
+        count = p.participant.vars.get('total_disclosure_count', 0)
+        player_stats.append({'player': p, 'count': count})
+    random.shuffle(player_stats)
+    player_stats.sort(key=lambda x: x['count'])
+    selected_players = [item['player'] for item in player_stats[:2]]
+    selected_ids = [p.id_in_group for p in selected_players]
+    for p in players:
+        is_selected = p.id_in_group in selected_ids
+        p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if is_selected else 'いいえ'
+        p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = is_selected
+        if is_selected:
+            current_total = p.participant.vars.get('total_disclosure_count', 0)
+            p.participant.vars['total_disclosure_count'] = current_total + 1
 
 # PAGES
 class Stand_by(Page):
@@ -288,16 +299,12 @@ class Wait_Chat(WaitPage):
                 p.participant.vars[f'disclosure_round_{round_number}'] = 'はい'
                 p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = True
             return
-        next_pair_ids = get_next_pair(group)
-        for p in players:
-            is_selected = p.id_in_group in next_pair_ids
-            p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if is_selected else 'いいえ'
-            p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = is_selected
+        set_disclosures_priority(group)
 
 
 class Chat(Page):
     form_model = 'player'
-    timeout_seconds = 120
+    # timeout_seconds = 120
 
     @staticmethod
     def is_displayed(player):
@@ -336,24 +343,19 @@ class Chat(Page):
         # ▼▼▼ スクリーンショット撮影用の強制上書きブロック ▼▼▼
         # =========================================================
         # decision = option2          # 自分の選択（option1=ベルリン, option2=ミュンヘン）
-        # my_disclosure = False       # 自分の意見が公開されたか (True か False)
+        # my_disclosure = False        # 自分の意見が公開されたか (True か False)
         # others_op1_count = 1        # 選択肢1(ベルリン)を選んだ他者の公開人数
         # others_op2_count = 1        # 選択肢2(ミュンヘン)を選んだ他者の公開人数
         # =========================================================
         # ▲▲▲ ここまで ▲▲▲
         # =========================================================
         num_others_disclosed = others_op1_count + others_op2_count
-        if my_disclosure and num_others_disclosed > 0:
+        if my_disclosure:
             disclosure_msg = f"<b>あなた</b> と <b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
-            chat_msg = f"他のメンバーと意見を交わし、なぜその選択肢が正しいと思うか議論を深めてください。"
-        elif my_disclosure and num_others_disclosed == 0:
-            disclosure_msg = f"<b>あなた</b> の選択のみ公開されています。"
-            chat_msg = f"現在、発言できるのはあなただけです。他のメンバーの参考になるよう、その選択肢を選んだ理由や考えを共有してください。"
-        elif not my_disclosure and num_others_disclosed > 0:
-            disclosure_msg = f"<b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
-            chat_msg = f"あなたは現在チャットを使うことができません。他のメンバーの発言内容を確認し、自分の解答の参考にしましょう。"
+            chat_msg = f"<b>あなたの意見は公開されています。</b>他のメンバーと意見を交わし議論を深めてください。"
         else:
-            disclosure_msg = f"今回は <b>誰の意見も公開されていません</b>。"
+            disclosure_msg = f"<b>他のメンバー{num_others_disclosed}人</b> の選択が公開されています。"
+            chat_msg = f"<b>あなたの意見は公開されていません。</b>2人の話し合いを見ていてください。"
         current_task = player.participant.vars['all_tasks'][idx]['kind']
         current_task_info = next(task for task in C.TASKS_INFO if task['kind'] == current_task)
         return {
@@ -469,11 +471,7 @@ class Wait_Decision(WaitPage):
             group.loop_count += 1
             for p in players:
                 p.participant.vars[f'is_finished_round_{p.round_number}'] = False
-            next_pair_ids = get_next_pair(group)
-            for p in players:
-                is_selected = p.id_in_group in next_pair_ids
-                p.participant.vars[f'disclosure_round_{round_number}'] = 'はい' if is_selected else 'いいえ'
-                p.participant.vars[f'choice_task{idx}'][-1]['is_disclosed'] = is_selected
+            set_disclosures_priority(group)
 
 
 class Unanimity(Page):
@@ -562,12 +560,12 @@ page_sequence = [
 def custom_export(players):
     yield [
         'participant_code', 'session_code', 'time_started_utc',
-        'condition','groupID', 'individualID', 'gender', 'age',
+        'groupID', 'individualID', 'gender', 'age',
         'order_id','questionID', 'task_id', 'kind', 'subquestionID', 'option1', 'option2', 'rank1', 'rank2',
         'time_step', 'choice', 'true_false', 'confidence', 'time_spent', 'is_disclosed'
     ]
     for p in players:
-        if p.round_number == C.NUM_ROUNDS:
+        if p.round_number == 1:
             for idx, task in enumerate(p.participant.vars['all_tasks']):
                 choice_list = p.participant.vars.get(f'choice_task{idx}', [])
                 for choice_data in choice_list:
@@ -575,7 +573,6 @@ def custom_export(players):
                         p.participant.code,
                         p.session.code,
                         p.participant.time_started_utc,
-                        1,
                         p.participant.vars.get('group_id_number'),
                         p.participant.vars.get('individual_id_number'),
                         p.participant.vars.get('gender'),

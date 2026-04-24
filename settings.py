@@ -2,13 +2,6 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
-        name = 'completed_expression',
-        app_sequence = [
-            'completed_expression'
-        ],
-        num_demo_participants = 5,
-    ),
-    dict(
         name = 'partial_expression',
         app_sequence = [
             'partial_expression'
@@ -37,6 +30,8 @@ LANGUAGE_CODE = 'ja'
 # e.g. EUR, GBP, CNY, JPY
 REAL_WORLD_CURRENCY_CODE = 'USD'
 USE_POINTS = True
+
+# USE_BROWSER_BOTS = True
 
 ADMIN_USERNAME = 'admin'
 # for security, best to set admin password in an environment variable
