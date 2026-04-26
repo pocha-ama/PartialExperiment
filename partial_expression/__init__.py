@@ -304,7 +304,7 @@ class Wait_Chat(WaitPage):
 
 class Chat(Page):
     form_model = 'player'
-    # timeout_seconds = 120
+    timeout_seconds = 120
 
     @staticmethod
     def is_displayed(player):
@@ -427,10 +427,7 @@ class Nth_Make_Decision(Page):
             true_false = 1 if current_question['rank2'] < current_question['rank1'] else 0
         confidence = player.nth_confidence
         player.participant.vars[f'decision_making_round_{player.round_number}'] = player.nth_decision_making
-        if player.round_number == 1 or player.round_number == 2:
-            time_step = 1
-        else:
-            time_step = player.round_number - player.participant.vars.get(f'task{idx - 1}_finished') - 1
+        time_step = len(player.participant.vars[f'choice_task{idx}'])
         player.participant.vars[f'choice_task{idx}'].append({
             'round': time_step,
             'choice': choice,
